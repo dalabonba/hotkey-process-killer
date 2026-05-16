@@ -1,5 +1,11 @@
 # ⚡ Process Killer — 自訂快捷鍵進程終結器
 
+## 🖼️截圖
+
+![alt text](img/screenshot.png)
+
+---
+
 ## 🚀 第一次使用
 
 1. 下載最新 [release](https://github.com/dalabonba/hotkey_process_killer/releases) 中的 `ProcessKiller.exe`
