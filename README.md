@@ -99,7 +99,11 @@ python -m venv .venv
 ### 打包（產生 EXE）
 
 ```powershell
-.venv\Scripts\pyinstaller --onefile --windowed --name "ProcessKiller" --manifest "admin.manifest" --clean process_killer.py
+.venv\Scripts\pyinstaller --onefile --windowed --name "ProcessKiller" --clean process_killer.py
+```
+OR
+```powershell
+python -m PyInstaller ProcessKiller.spec
 ```
 
 - 打包後輸出：`dist\ProcessKiller.exe`。將 EXE 與 `admin.manifest` 放在同一資料夾執行，程式會建立 `config.json` 保存設定。
