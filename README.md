@@ -11,6 +11,12 @@
 
 ---
 
+> [!NOTE]
+> ### 📢揭露
+> 功能實現：Claude（Anthropic）& Github Copilot
+
+---
+
 ## ✨ 功能
 
 | 功能 | 說明 |
@@ -60,4 +66,40 @@ win+q
 
 ---
 
-製作：Claude（Anthropic）& Github Copilot
+## 開發者資訊
+
+以下針對開發者與維護者，說明專案資訊
+
+### 環境與相依性
+
+- 作業系統：Windows 11（開發與測試環境）
+- Python：3.8 以上（建議使用 Python 3.8+）
+- 建議使用虛擬環境（`venv`）以避免影響系統環境
+
+- Python 套件：`keyboard`, `psutil`。打包時需安裝 `pyinstaller`。
+
+### 在原始碼上開發或執行
+
+1. 建立虛擬環境並安裝套件：
+
+```powershell
+python -m venv .venv
+.venv\Scripts\pip install --upgrade pip
+.venv\Scripts\pip install keyboard psutil
+```
+
+2. 從原始碼啟動應用程式：
+
+```powershell
+.venv\Scripts\python.exe process_killer.py
+```
+
+- 建議以「系統管理員」身分執行（右鍵以系統管理員執行），否則可能無法終止某些受保護的進程。
+
+### 打包（產生 EXE）
+
+```powershell
+.venv\Scripts\pyinstaller --onefile --windowed --name "ProcessKiller" --manifest "admin.manifest" --clean process_killer.py
+```
+
+- 打包後輸出：`dist\ProcessKiller.exe`。將 EXE 與 `admin.manifest` 放在同一資料夾執行，程式會建立 `config.json` 保存設定。
