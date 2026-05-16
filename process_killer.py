@@ -46,8 +46,8 @@ class ProcessKillerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("⚡ Process Killer — 快捷鍵進程終結器")
-        self.root.geometry("700x520")
-        self.root.minsize(600, 460)
+        self.root.geometry("700x540")
+        self.root.minsize(700, 540)
         self.root.configure(bg=BG)
         self.root.resizable(True, True)
 
@@ -130,14 +130,14 @@ class ProcessKillerApp:
 
         # 主列表
         list_frame = tk.Frame(self.root, bg=BG)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=12)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=8)
 
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("Kill.Treeview",
                          background=BG2, foreground=TEXT,
                          fieldbackground=BG2, font=FONT_MAIN,
-                         rowheight=32, borderwidth=0)
+                         rowheight=28, borderwidth=0)
         style.configure("Kill.Treeview.Heading",
                          background=BG3, foreground=TEXT_DIM,
                          font=FONT_BOLD, relief="flat")
@@ -147,7 +147,8 @@ class ProcessKillerApp:
 
         cols = ("process", "hotkey", "running", "kills")
         self.tree = ttk.Treeview(list_frame, columns=cols,
-                                  show="headings", style="Kill.Treeview")
+                                  show="headings", style="Kill.Treeview",
+                                  height=10)
         self.tree.heading("process", text="⬛  進程名稱")
         self.tree.heading("hotkey",  text="⌨  快捷鍵")
         self.tree.heading("running", text="狀態")
