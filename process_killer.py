@@ -122,7 +122,7 @@ class ProcessKillerApp:
         add_btn.grid(row=1, column=3, padx=(4, 0))
 
         # 說明文字
-        tk.Label(inner, text="快捷鍵格式: ctrl+shift+k  /  alt+F4  /  ctrl+alt+delete",
+        tk.Label(inner, text="快捷鍵格式: ctrl+shift+k  /  alt+F4  /  win+q",
                  font=FONT_SUB, fg=TEXT_DIM, bg=BG2).grid(
             row=2, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
