@@ -112,4 +112,4 @@ OR
 python -m PyInstaller ProcessKiller.spec
 ```
 
-- 打包後輸出：`dist\ProcessKiller.exe`。將 EXE 與 `admin.manifest` 放在同一資料夾執行，程式會建立 `config.json` 保存設定。
+- 打包後輸出：`dist\ProcessKiller.exe`。將 EXE 放在專用資料夾執行，程式會建立 `config.json` 保存設定。
