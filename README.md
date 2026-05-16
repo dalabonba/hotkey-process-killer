@@ -39,8 +39,7 @@
 
 ```
 ctrl+shift+k
-alt+F4
-ctrl+alt+k
+ctrl+alt+j
 shift+F9
 win+q
 ```
