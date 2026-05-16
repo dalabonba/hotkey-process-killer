@@ -48,6 +48,7 @@ win+q
 
 | 程式 | 進程名稱 |
 |------|---------|
+| GTAV 強化版 | GTA5_Enhanced.exe |
 | Google Chrome | chrome.exe |
 | Microsoft Edge | msedge.exe |
 | Firefox | firefox.exe |
