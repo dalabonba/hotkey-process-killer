@@ -38,6 +38,7 @@
 ## ⌨ 快捷鍵格式範例
 
 ```
+F8
 ctrl+shift+k
 ctrl+alt+j
 shift+F9
