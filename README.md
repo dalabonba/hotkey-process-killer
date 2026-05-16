@@ -2,7 +2,7 @@
 
 ## 🚀 第一次使用
 
-1. 下載最新 release 中的 `ProcessKiller.exe`
+1. 下載最新 [release](https://github.com/dalabonba/hotkey_process_killer/releases) 中的 `ProcessKiller.exe`
 2. 將 `ProcessKiller.exe` 放到一個專用資料夾中
 3. 直接執行 `ProcessKiller.exe`
    - 程式會在同一個資料夾中自動建立 `config.json`
