@@ -346,13 +346,32 @@ class ProcessKillerApp:
 
     # ── 樹狀列表 ───────────────────────────────────────────
     def _refresh_tree(self):
+        selected_hotkeys = []
+        for item in self.tree.selection():
+            try:
+                vals = self.tree.item(item)["values"]
+                if len(vals) > 1:
+                    selected_hotkeys.append(vals[1])
+            except Exception:
+                pass
+
         for item in self.tree.get_children():
             self.tree.delete(item)
+
+        selected_items = []
         for hotkey, proc in self.shortcuts.items():
             running = self._is_running(proc)
             status  = "● 執行中" if running else "○ 未執行"
             kills   = self.kill_counts.get(hotkey, 0)
-            self.tree.insert("", tk.END, values=(proc, hotkey, status, kills))
+            item_id = self.tree.insert("", tk.END, values=(proc, hotkey, status, kills))
+            if hotkey in selected_hotkeys:
+                selected_items.append(item_id)
+
+        if selected_items:
+            try:
+                self.tree.selection_set(selected_items)
+            except Exception:
+                pass
 
     # ── 狀態列 ─────────────────────────────────────────────
     def _set_status(self, text, color=GREEN):
