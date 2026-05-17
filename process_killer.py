@@ -7,6 +7,8 @@ import os
 import sys
 import threading
 import ctypes
+import time
+from datetime import datetime
 
 # 打包成 exe 後，__file__ 會指向暫存目錄；用 sys.executable 取得 exe 所在位置
 if getattr(sys, "frozen", False):
@@ -53,11 +55,21 @@ class ProcessKillerApp:
 
         self.shortcuts = {}       # hotkey -> process_name
         self.kill_counts = {}     # hotkey -> int
+        self.hotkey_handlers = {} # hotkey -> handler id returned by keyboard.add_hotkey
         self.log_entries = []
+
+        # Initialize logging
+        self._log("\n" + "="*80)
+        self._log(f"🚀 PROCESS KILLER INITIALIZED - Admin: {is_admin()}")
+        self._log(f"   Base Dir: {_BASE_DIR}")
+        self._log(f"   Config File: {CONFIG_FILE}")
+        self._log("="*80)
 
         self.load_config()
         self._build_ui()
         self._register_all_hotkeys()
+        # start watchdog to periodically refresh/re-register hotkeys
+        threading.Thread(target=self._hotkey_watchdog_loop, daemon=True).start()
         self._update_process_status()
 
     # ── UI 建構 ────────────────────────────────────────────
@@ -202,44 +214,63 @@ class ProcessKillerApp:
             return
 
         try:
-            keyboard.add_hotkey(hotkey, self._kill_process, args=[proc, hotkey])
+            self._log(f"➕ adding new shortcut: {hotkey} -> {proc}")
+            handler = keyboard.add_hotkey(hotkey, self._kill_process, args=[proc, hotkey])
             self.shortcuts[hotkey] = proc
             self.kill_counts[hotkey] = 0
+            # store handler so we can remove/refresh later
+            self.hotkey_handlers[hotkey] = handler
+            self._log(f"✅ successfully added {hotkey} -> {proc} (handler_id: {id(handler)})")
             self._refresh_tree()
             self._save_config()
             self._set_status(f"✅ 已新增  {hotkey}  →  {proc}", GREEN)
             self.proc_var.set("")
             self.hotkey_var.set("")
         except Exception as e:
+            self._log(f"❌ failed to add shortcut {hotkey} -> {proc}: {type(e).__name__}: {e}")
             messagebox.showerror("快捷鍵錯誤", f"無法註冊快捷鍵:\n{e}\n\n請確認格式正確。")
 
     def _kill_process(self, process_name, hotkey):
+        # log invocation with detailed info
+        try:
+            self._log(f"🔥 HOTKEY TRIGGERED: {hotkey} -> {process_name}")
+        except Exception:
+            pass
         killed = 0
         errors = []
         target_name = process_name.lower()
+        matched_pids = []
         for proc in psutil.process_iter(["name", "pid"]):
             name = proc.info.get("name")
+            pid = proc.info.get("pid")
             if not name:
                 continue
             try:
                 if name.lower() == target_name:
+                    matched_pids.append(pid)
                     proc.kill()
                     killed += 1
+                    self._log(f"  └─ killed process: {name} (PID: {pid})")
             except psutil.AccessDenied:
-                errors.append("AccessDenied")
+                errors.append(f"AccessDenied({pid})")
+                self._log(f"  └─ AccessDenied: {name} (PID: {pid})")
             except psutil.NoSuchProcess:
                 pass
             except Exception as ex:
                 errors.append(str(ex))
+                self._log(f"  └─ Exception: {name} (PID: {pid}) - {ex}")
 
         self.kill_counts[hotkey] = self.kill_counts.get(hotkey, 0) + killed
 
         if killed > 0:
             msg = f"⚡ 已終止 {killed} 個「{process_name}」"
+            self._log(f"✅ SUCCESS: killed {killed} of {process_name} | PIDs: {matched_pids}")
         elif errors:
             msg = f"🔒 無法終止「{process_name}」— 請以管理員身分執行"
+            self._log(f"❌ PERMISSION ERROR: {process_name} - errors: {errors}")
         else:
             msg = f"🔍 找不到執行中的「{process_name}」"
+            self._log(f"⚠️  NOT FOUND: {process_name} is not running")
 
         color = GREEN if killed > 0 else (YELLOW if errors else TEXT_DIM)
         self.root.after(0, lambda: self._set_status(msg, color))
@@ -263,10 +294,23 @@ class ProcessKillerApp:
         for item in sel:
             vals  = self.tree.item(item)["values"]
             hotkey = vals[1]
+            self._log(f"🗑️  deleting shortcut: {hotkey}")
             try:
-                keyboard.remove_hotkey(hotkey)
-            except Exception:
-                pass
+                # try to remove by stored handler first
+                handler = self.hotkey_handlers.pop(hotkey, None)
+                if handler is not None:
+                    try:
+                        keyboard.remove_hotkey(handler)
+                        self._log(f"  ├─ removed handler for {hotkey}")
+                    except Exception as e:
+                        # fallback to removing by hotkey string
+                        self._log(f"  ├─ handler removal failed, fallback to string remove: {e}")
+                        keyboard.remove_hotkey(hotkey)
+                else:
+                    self._log(f"  ├─ no handler found, using string remove")
+                    keyboard.remove_hotkey(hotkey)
+            except Exception as e:
+                self._log(f"  └─ failed to remove hotkey {hotkey}: {type(e).__name__}: {e}")
             self.shortcuts.pop(hotkey, None)
             self.kill_counts.pop(hotkey, None)
         self._refresh_tree()
@@ -274,11 +318,16 @@ class ProcessKillerApp:
         self._set_status("🗑 已刪除選取的快捷鍵", YELLOW)
 
     def _register_all_hotkeys(self):
-        for hotkey, proc in self.shortcuts.items():
+        total = len(self.shortcuts)
+        self._log(f"📋 registering {total} hotkeys from config...")
+        for i, (hotkey, proc) in enumerate(self.shortcuts.items(), 1):
             try:
-                keyboard.add_hotkey(hotkey, self._kill_process, args=[proc, hotkey])
-            except Exception:
-                pass
+                # register and store handler id
+                handler = keyboard.add_hotkey(hotkey, self._kill_process, args=[proc, hotkey])
+                self.hotkey_handlers[hotkey] = handler
+                self._log(f"  ✓ [{i}/{total}] registered {hotkey} -> {proc}")
+            except Exception as e:
+                self._log(f"  ✗ [{i}/{total}] FAILED to register {hotkey}: {type(e).__name__}: {e}")
 
     # ── 進程狀態輪詢 ───────────────────────────────────────
     def _update_process_status(self):
@@ -301,7 +350,7 @@ class ProcessKillerApp:
             self.tree.delete(item)
         for hotkey, proc in self.shortcuts.items():
             running = self._is_running(proc)
-            status  = "🟢 執行中" if running else "⚫ 未執行"
+            status  = "● 執行中" if running else "○ 未執行"
             kills   = self.kill_counts.get(hotkey, 0)
             self.tree.insert("", tk.END, values=(proc, hotkey, status, kills))
 
@@ -326,6 +375,50 @@ class ProcessKillerApp:
         if var.get().strip() == "":
             var.set(placeholder)
 
+    def _log(self, msg: str):
+        try:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # ms precision
+            thread_id = threading.current_thread().name
+            handlers_count = len(self.hotkey_handlers)
+            fn = os.path.join(_BASE_DIR, "process_killer.log")
+            with open(fn, "a", encoding="utf-8") as f:
+                f.write(f"[{ts}] [{thread_id}] [H:{handlers_count}] {msg}\n")
+        except Exception:
+            pass
+
+    def _hotkey_watchdog_loop(self):
+        # Periodically refresh hotkey registrations to recover from lost hooks
+        self._log("🐕 WATCHDOG: started (60s interval)")
+        cycle = 0
+        while True:
+            try:
+                cycle += 1
+                total = len(self.shortcuts)
+                if total > 0:
+                    self._log(f"🔄 WATCHDOG CYCLE {cycle}: checking {total} hotkeys...")
+                for hotkey, proc in list(self.shortcuts.items()):
+                    try:
+                        # remove stale handler if any
+                        handler = self.hotkey_handlers.get(hotkey)
+                        if handler is not None:
+                            try:
+                                keyboard.remove_hotkey(handler)
+                                self._log(f"  ├─ removed stale handler for {hotkey}")
+                            except Exception as e:
+                                self._log(f"  ├─ remove_hotkey failed for {hotkey}: {e}")
+                        # re-register
+                        new_handler = keyboard.add_hotkey(hotkey, self._kill_process, args=[proc, hotkey])
+                        self.hotkey_handlers[hotkey] = new_handler
+                        self._log(f"  └─ re-registered {hotkey} -> {proc} (handler_id: {id(new_handler)})")
+                    except Exception as e:
+                        self._log(f"  ❌ watchdog FAILED for {hotkey}: {type(e).__name__}: {e}")
+                if total > 0:
+                    self._log(f"🔄 WATCHDOG CYCLE {cycle}: completed")
+                time.sleep(60)
+            except Exception as e:
+                self._log(f"❌ WATCHDOG LOOP FATAL ERROR: {type(e).__name__}: {e}")
+                time.sleep(60)
+
     # ── 設定檔 ─────────────────────────────────────────────
     def _save_config(self):
         data = {"shortcuts": self.shortcuts, "kill_counts": self.kill_counts}
@@ -339,27 +432,43 @@ class ProcessKillerApp:
                     data = json.load(f)
                 self.shortcuts   = data.get("shortcuts", {})
                 self.kill_counts = data.get("kill_counts", {})
-            except Exception:
+                self._log(f"📂 loaded config: {len(self.shortcuts)} shortcuts, {sum(self.kill_counts.values())} total kills")
+                for hk, proc in list(self.shortcuts.items())[:3]:
+                    self._log(f"   - {hk} -> {proc}")
+                if len(self.shortcuts) > 3:
+                    self._log(f"   ... and {len(self.shortcuts) - 3} more")
+            except Exception as e:
+                self._log(f"⚠ failed to load config: {type(e).__name__}: {e}")
                 self.shortcuts   = {}
                 self.kill_counts = {}
         else:
+            self._log(f"ℹ config file not found, starting fresh (expected: {CONFIG_FILE})")
             self.shortcuts   = {}
             self.kill_counts = {}
 
     def on_closing(self):
+        self._log(f"🛑 SHUTTING DOWN - {len(self.shortcuts)} shortcuts, {len(self.kill_counts)} total kills")
         try:
             keyboard.unhook_all_hotkeys()
+            self._log("   ✓ unhook_all_hotkeys() called")
+        except Exception as e:
+            self._log(f"   ⚠ unhook_all_hotkeys() error: {e}")
+        try:
             keyboard.unhook_all()
-        except Exception:
-            pass
+            self._log("   ✓ unhook_all() called")
+        except Exception as e:
+            self._log(f"   ⚠ unhook_all() error: {e}")
         try:
             self.root.quit()
-        except Exception:
-            pass
+            self._log("   ✓ root.quit() called")
+        except Exception as e:
+            self._log(f"   ⚠ root.quit() error: {e}")
         try:
             self.root.destroy()
-        except Exception:
-            pass
+            self._log("   ✓ root.destroy() called")
+        except Exception as e:
+            self._log(f"   ⚠ root.destroy() error: {e}")
+        self._log("🏁 SHUTDOWN COMPLETE\n")
         if getattr(sys, "frozen", False):
             sys.exit(0)
 
