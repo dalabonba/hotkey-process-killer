@@ -38,21 +38,22 @@
 ## ⌨ 快捷鍵格式範例
 
 ```
+F8
 ctrl+shift+k
-alt+F4
-ctrl+alt+k
+ctrl+alt+j
 shift+F9
 win+q
 ```
 
 ---
 
-## ⚠ 注意事項
-
-- **建議以管理員身分執行**，否則部分系統進程（如防毒軟體）無法終止
-- 進程名稱需完整輸入，包含 `.exe`（例: `chrome.exe`）
-- 若快捷鍵與其他程式衝突，請換一個組合
-- 部分系統保留快捷鍵（例如 `Ctrl+Alt+Delete`）無法被程式攔截，請改用其他組合
+> [!WARNING]
+> ## ⚠ 注意事項
+>
+> - **建議以管理員身分執行**，否則部分系統進程（如防毒軟體）無法終止
+> - 進程名稱需完整輸入，包含 `.exe`（例: `chrome.exe`）
+> - **若快捷鍵與其他程式衝突，請換一個組合**
+> - 部分系統保留快捷鍵（例如 `Ctrl+Alt+Delete`）無法被程式攔截，請改用其他組合
 
 ---
 
@@ -112,4 +113,4 @@ OR
 python -m PyInstaller ProcessKiller.spec
 ```
 
-- 打包後輸出：`dist\ProcessKiller.exe`。將 EXE 與 `admin.manifest` 放在同一資料夾執行，程式會建立 `config.json` 保存設定。
+- 打包後輸出：`dist\ProcessKiller.exe`。將 EXE 放在專用資料夾執行，程式會建立 `config.json` 保存設定。
